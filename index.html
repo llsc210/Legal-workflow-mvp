@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legal Workflow MVP</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="page-header">
+        <div>
+          <h1>Legal Workflow Dashboard</h1>
+          <p>Receivership &amp; Post-Judgment Matter Tracking</p>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel form-panel">
+          <h2>Create Matter</h2>
+          <form id="matter-form" class="matter-form">
+            <div class="grid">
+              <label>Client Name <input name="clientName" required /></label>
+              <label>File Number <input name="fileNumber" required /></label>
+              <label>Court <input name="court" required /></label>
+              <label>County <input name="county" required /></label>
+              <label>Case Number <input name="caseNumber" required /></label>
+              <label>Judge <input name="judge" required /></label>
+              <label>Status <input name="status" placeholder="Open, on hold, etc." required /></label>
+              <label>Initial Stage
+                <select name="stage" required></select>
+              </label>
+              <label>Important Date
+                <input type="date" name="importantDate" required />
+              </label>
+            </div>
+            <button type="submit">Add Matter</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Dashboard</h2>
+          <div id="kpis" class="kpi-grid"></div>
+        </section>
+
+        <section class="panel">
+          <h2>All Open Matters</h2>
+          <div id="open-matters" class="matter-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Overdue Follow-Ups</h2>
+          <div id="overdue-followups" class="matter-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Waiting on Signed Orders</h2>
+          <div id="order-pending" class="matter-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Matters by Court</h2>
+          <div id="matters-by-court" class="court-summary"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="matter-card-template">
+      <article class="matter-card">
+        <header>
+          <h3 class="matter-title"></h3>
+          <p class="matter-meta"></p>
+        </header>
+
+        <dl class="matter-details"></dl>
+
+        <section class="matter-stage-row">
+          <label>Stage
+            <select class="stage-select"></select>
+          </label>
+          <span class="stage-badge"></span>
+        </section>
+
+        <section class="followup-section">
+          <h4>Reminders &amp; Follow-Ups</h4>
+          <ul class="reminder-list"></ul>
+          <form class="reminder-form">
+            <input name="note" placeholder="Reminder note" required />
+            <input type="date" name="dueDate" required />
+            <button type="submit">Add Reminder</button>
+          </form>
+        </section>
+      </article>
+    </template>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
