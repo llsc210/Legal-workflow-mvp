@@ -1,46 +1,24 @@
-const STORAGE_KEY = "legal-workflow-matters";
+const STORAGE_KEY = "legal-workflow-matters-v2";
+const STATUS_OPTIONS = ["open", "follow-up due", "order pending", "order signed", "closed"];
 
-const STAGES = [
-  "intake",
-  "motion drafted",
-  "motion sent",
-  "motion filed",
-  "order pending",
-  "order signed",
-  "follow-up due",
-  "closed",
-];
-
-const stageSelect = document.querySelector('select[name="stage"]');
-const matterForm = document.querySelector("#matter-form");
-const openMattersContainer = document.querySelector("#open-matters");
-const overdueContainer = document.querySelector("#overdue-followups");
-const orderPendingContainer = document.querySelector("#order-pending");
-const mattersByCourtContainer = document.querySelector("#matters-by-court");
-const kpiContainer = document.querySelector("#kpis");
-const cardTemplate = document.querySelector("#matter-card-template");
+const appContainer = document.querySelector("#app");
 
 let matters = loadMatters();
 
-initializeStageSelect(stageSelect);
-matterForm.addEventListener("submit", handleMatterCreate);
-render();
-
-function initializeStageSelect(selectEl) {
-  STAGES.forEach((stage) => {
-    const option = document.createElement("option");
-    option.value = stage;
-    option.textContent = stage;
-    selectEl.append(option);
-  });
-}
+window.addEventListener("hashchange", renderRoute);
+window.addEventListener("DOMContentLoaded", () => {
+  if (!window.location.hash) {
+    window.location.hash = "#/matters";
+  }
+  renderRoute();
+});
 
 function loadMatters() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return [];
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return [];
 
   try {
-    return JSON.parse(saved);
+    return JSON.parse(raw);
   } catch {
     return [];
   }
@@ -50,203 +28,303 @@ function saveMatters() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(matters));
 }
 
-function handleMatterCreate(event) {
-  event.preventDefault();
-  const formData = new FormData(event.target);
+function renderRoute() {
+  const route = parseRoute(window.location.hash);
 
-  const matter = {
-    id: crypto.randomUUID(),
-    clientName: formData.get("clientName")?.toString().trim(),
-    fileNumber: formData.get("fileNumber")?.toString().trim(),
-    court: formData.get("court")?.toString().trim(),
-    county: formData.get("county")?.toString().trim(),
-    caseNumber: formData.get("caseNumber")?.toString().trim(),
-    judge: formData.get("judge")?.toString().trim(),
-    status: formData.get("status")?.toString().trim(),
-    stage: formData.get("stage")?.toString(),
-    importantDate: formData.get("importantDate")?.toString(),
-    reminders: [],
-  };
-
-  matters.unshift(matter);
-  saveMatters();
-  matterForm.reset();
-  stageSelect.value = STAGES[0];
-  render();
-}
-
-function render() {
-  const openMatters = matters.filter((matter) => matter.stage !== "closed");
-  const overdue = getOverdueMatters(openMatters);
-  const waitingOnOrder = openMatters.filter((matter) => matter.stage === "order pending");
-
-  renderKpis({
-    openCount: openMatters.length,
-    overdueCount: overdue.length,
-    waitingOnOrderCount: waitingOnOrder.length,
-    courtsCount: uniqueCourts(openMatters).length,
-  });
-
-  renderMatterList(openMattersContainer, openMatters);
-  renderMatterList(overdueContainer, overdue);
-  renderMatterList(orderPendingContainer, waitingOnOrder);
-  renderMattersByCourt(openMatters);
-}
-
-function renderKpis(values) {
-  const items = [
-    ["Open Matters", values.openCount],
-    ["Overdue Follow-Ups", values.overdueCount],
-    ["Waiting on Signed Orders", values.waitingOnOrderCount],
-    ["Active Courts", values.courtsCount],
-  ];
-
-  kpiContainer.innerHTML = "";
-  items.forEach(([label, value]) => {
-    const card = document.createElement("article");
-    card.className = "kpi-card";
-    card.innerHTML = `<h3>${label}</h3><p>${value}</p>`;
-    kpiContainer.append(card);
-  });
-}
-
-function renderMatterList(container, list) {
-  container.innerHTML = "";
-
-  if (!list.length) {
-    container.innerHTML = '<p class="empty">No matters to show.</p>';
+  if (route.page === "list") {
+    renderMatterListPage();
     return;
   }
 
-  list.forEach((matter) => {
-    const fragment = cardTemplate.content.cloneNode(true);
-    const card = fragment.querySelector(".matter-card");
+  if (route.page === "new") {
+    renderMatterFormPage();
+    return;
+  }
 
-    fragment.querySelector(".matter-title").textContent = `${matter.clientName} (${matter.fileNumber})`;
-    fragment.querySelector(".matter-meta").textContent = `${matter.court} · ${matter.county} County · Case ${matter.caseNumber}`;
+  if (route.page === "detail") {
+    const matter = matters.find((item) => item.id === route.id);
+    if (!matter) {
+      renderNotFound("Matter not found.");
+      return;
+    }
+    renderMatterDetailPage(matter);
+    return;
+  }
 
-    const details = fragment.querySelector(".matter-details");
-    details.append(
-      detailRow("Judge", matter.judge),
-      detailRow("Status", matter.status),
-      detailRow("Important Date", formatDate(matter.importantDate))
-    );
+  if (route.page === "edit") {
+    const matter = matters.find((item) => item.id === route.id);
+    if (!matter) {
+      renderNotFound("Matter not found.");
+      return;
+    }
+    renderMatterFormPage(matter);
+    return;
+  }
 
-    const stageDropdown = fragment.querySelector(".stage-select");
-    initializeStageSelect(stageDropdown);
-    stageDropdown.value = matter.stage;
-    stageDropdown.addEventListener("change", (event) => {
-      updateMatter(matter.id, { stage: event.target.value });
+  renderNotFound("Page not found.");
+}
+
+function parseRoute(hash) {
+  const normalized = (hash || "#/matters").replace(/^#/, "");
+  const parts = normalized.split("/").filter(Boolean);
+
+  if (parts[0] !== "matters") return { page: "not-found" };
+  if (parts.length === 1) return { page: "list" };
+  if (parts[1] === "new") return { page: "new" };
+  if (parts.length === 2) return { page: "detail", id: parts[1] };
+  if (parts.length === 3 && parts[2] === "edit") return { page: "edit", id: parts[1] };
+
+  return { page: "not-found" };
+}
+
+function renderMatterListPage() {
+  const openMatters = matters.filter((matter) => matter.status !== "closed");
+  const overdueFollowups = openMatters.filter(isFollowupOverdue);
+  const delayedOrders = openMatters.filter(isOrderDelayed);
+
+  appContainer.innerHTML = `
+    <section class="list-page">
+      <div class="list-head">
+        <h2>Matters</h2>
+        <a class="button-link" href="#/matters/new">Create Matter</a>
+      </div>
+
+      <div class="kpi-grid">
+        <article class="kpi-card"><h3>Total Matters</h3><p>${matters.length}</p></article>
+        <article class="kpi-card"><h3>Overdue Follow-ups</h3><p>${overdueFollowups.length}</p></article>
+        <article class="kpi-card"><h3>Delayed Orders</h3><p>${delayedOrders.length}</p></article>
+      </div>
+
+      <div class="matter-list" id="matter-list"></div>
+    </section>
+  `;
+
+  const listEl = appContainer.querySelector("#matter-list");
+
+  if (!matters.length) {
+    listEl.innerHTML = '<p class="empty">No matters yet. Click "Create Matter" to start.</p>';
+    return;
+  }
+
+  matters
+    .slice()
+    .sort((a, b) => dateValue(b.createdAt) - dateValue(a.createdAt))
+    .forEach((matter) => {
+      const flags = [];
+      if (isFollowupOverdue(matter)) flags.push("Overdue follow-up");
+      if (isOrderDelayed(matter)) flags.push("Delayed order");
+
+      const card = document.createElement("article");
+      card.className = "matter-card";
+      card.innerHTML = `
+        <header>
+          <h3><a href="#/matters/${matter.id}">${escapeHtml(matter.title)}</a></h3>
+          <p class="matter-meta">${escapeHtml(matter.court)} · ${escapeHtml(matter.county)} County · Judge ${escapeHtml(matter.judge)}</p>
+        </header>
+        <dl class="matter-details">
+          ${detailRow("Status", matter.status)}
+          ${detailRow("Follow-up Due", formatDate(matter.followUpDueDate))}
+          ${detailRow("Order Expected", formatDate(matter.orderExpectedDate))}
+        </dl>
+        ${flags.length ? `<p class="flag-row">${flags.map((flag) => `<span class="flag">${flag}</span>`).join("")}</p>` : ""}
+      `;
+      listEl.append(card);
     });
+}
 
-    fragment.querySelector(".stage-badge").textContent = matter.stage;
+function renderMatterDetailPage(matter) {
+  const followupOverdue = isFollowupOverdue(matter);
+  const orderDelayed = isOrderDelayed(matter);
 
-    const reminderList = fragment.querySelector(".reminder-list");
-    renderReminders(reminderList, matter.reminders);
+  appContainer.innerHTML = `
+    <section class="detail-page">
+      <div class="detail-head">
+        <h2>${escapeHtml(matter.title)}</h2>
+        <div class="detail-actions">
+          <a class="button-link" href="#/matters/${matter.id}/edit">Edit</a>
+          <a class="button-link button-muted" href="#/matters">Back to List</a>
+        </div>
+      </div>
 
-    fragment.querySelector(".reminder-form").addEventListener("submit", (event) => {
-      event.preventDefault();
-      const formData = new FormData(event.target);
-      const reminder = {
-        id: crypto.randomUUID(),
-        note: formData.get("note")?.toString().trim(),
-        dueDate: formData.get("dueDate")?.toString(),
-        done: false,
-      };
+      <p class="matter-meta">${escapeHtml(matter.court)} · ${escapeHtml(matter.county)} County · Judge ${escapeHtml(matter.judge)}</p>
 
-      updateMatter(matter.id, {
-        reminders: [...matter.reminders, reminder],
-      });
-    });
+      <dl class="matter-details detail-grid">
+        ${detailRow("Status", matter.status)}
+        ${detailRow("Important Date", formatDate(matter.importantDate))}
+        ${detailRow("Follow-up Due", formatDate(matter.followUpDueDate))}
+        ${detailRow("Order Expected", formatDate(matter.orderExpectedDate))}
+        ${detailRow("Order Signed", formatDate(matter.orderSignedDate))}
+        ${detailRow("Created", formatDateTime(matter.createdAt))}
+      </dl>
 
-    container.append(card);
+      <section class="logic-panel">
+        <h3>Workflow Logic</h3>
+        <ul>
+          <li>Overdue follow-up: <strong>${followupOverdue ? "Yes" : "No"}</strong></li>
+          <li>Delayed order: <strong>${orderDelayed ? "Yes" : "No"}</strong></li>
+        </ul>
+      </section>
+    </section>
+  `;
+}
+
+function renderMatterFormPage(existingMatter = null) {
+  const isEdit = Boolean(existingMatter);
+
+  appContainer.innerHTML = `
+    <section class="form-page">
+      <h2>${isEdit ? "Edit Matter" : "Create Matter"}</h2>
+      <form id="matter-form" class="matter-form">
+        <div class="grid">
+          <label>Title
+            <input name="title" required value="${escapeHtml(existingMatter?.title || "")}" />
+          </label>
+          <label>Court
+            <input name="court" required value="${escapeHtml(existingMatter?.court || "")}" />
+          </label>
+          <label>County
+            <input name="county" required value="${escapeHtml(existingMatter?.county || "")}" />
+          </label>
+          <label>Judge
+            <input name="judge" required value="${escapeHtml(existingMatter?.judge || "")}" />
+          </label>
+          <label>Status
+            <select name="status" required>
+              ${STATUS_OPTIONS.map((status) => `<option value="${status}" ${existingMatter?.status === status ? "selected" : ""}>${status}</option>`).join("")}
+            </select>
+          </label>
+          <label>Important Date
+            <input type="date" name="importantDate" required value="${existingMatter?.importantDate || ""}" />
+          </label>
+          <label>Follow-up Due Date
+            <input type="date" name="followUpDueDate" value="${existingMatter?.followUpDueDate || ""}" />
+          </label>
+          <label>Order Expected Date
+            <input type="date" name="orderExpectedDate" value="${existingMatter?.orderExpectedDate || ""}" />
+          </label>
+          <label>Order Signed Date
+            <input type="date" name="orderSignedDate" value="${existingMatter?.orderSignedDate || ""}" />
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit">${isEdit ? "Save Changes" : "Create Matter"}</button>
+          <a class="button-link button-muted" href="${isEdit ? `#/matters/${existingMatter.id}` : "#/matters"}">Cancel</a>
+        </div>
+      </form>
+    </section>
+  `;
+
+  const form = appContainer.querySelector("#matter-form");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+
+    const payload = {
+      title: formData.get("title")?.toString().trim() || "",
+      court: formData.get("court")?.toString().trim() || "",
+      county: formData.get("county")?.toString().trim() || "",
+      judge: formData.get("judge")?.toString().trim() || "",
+      status: formData.get("status")?.toString() || "open",
+      importantDate: formData.get("importantDate")?.toString() || "",
+      followUpDueDate: formData.get("followUpDueDate")?.toString() || "",
+      orderExpectedDate: formData.get("orderExpectedDate")?.toString() || "",
+      orderSignedDate: formData.get("orderSignedDate")?.toString() || "",
+    };
+
+    if (isEdit) {
+      matters = matters.map((item) => (item.id === existingMatter.id ? { ...item, ...payload } : item));
+      saveMatters();
+      window.location.hash = `#/matters/${existingMatter.id}`;
+      return;
+    }
+
+    const newMatter = {
+      id: crypto.randomUUID(),
+      ...payload,
+      createdAt: new Date().toISOString(),
+    };
+
+    matters.unshift(newMatter);
+    saveMatters();
+    window.location.hash = `#/matters/${newMatter.id}`;
   });
 }
 
-function renderReminders(container, reminders) {
-  if (!reminders.length) {
-    container.innerHTML = "<li>No reminders yet.</li>";
-    return;
-  }
-
-  container.innerHTML = "";
-
-  reminders.forEach((reminder) => {
-    const item = document.createElement("li");
-    const overdue = isPast(reminder.dueDate) ? "(Overdue)" : "";
-    item.textContent = `${reminder.note} — ${formatDate(reminder.dueDate)} ${overdue}`;
-    container.append(item);
-  });
+function renderNotFound(message) {
+  appContainer.innerHTML = `
+    <section>
+      <h2>${message}</h2>
+      <a class="button-link" href="#/matters">Back to Matter List</a>
+    </section>
+  `;
 }
 
-function renderMattersByCourt(openMatters) {
-  const counts = openMatters.reduce((acc, matter) => {
-    acc[matter.court] = (acc[matter.court] || 0) + 1;
-    return acc;
-  }, {});
-
-  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  if (!entries.length) {
-    mattersByCourtContainer.innerHTML = '<p class="empty">No open matters yet.</p>';
-    return;
-  }
-
-  const list = document.createElement("ul");
-  entries.forEach(([court, count]) => {
-    const item = document.createElement("li");
-    item.textContent = `${court}: ${count}`;
-    list.append(item);
-  });
-
-  mattersByCourtContainer.innerHTML = "";
-  mattersByCourtContainer.append(list);
+function isFollowupOverdue(matter) {
+  if (!matter.followUpDueDate) return false;
+  if (matter.status === "closed") return false;
+  return isPast(matter.followUpDueDate);
 }
 
-function updateMatter(id, updates) {
-  matters = matters.map((matter) => (matter.id === id ? { ...matter, ...updates } : matter));
-  saveMatters();
-  render();
-}
-
-function getOverdueMatters(list) {
-  return list.filter((matter) =>
-    matter.reminders.some((reminder) => !reminder.done && isPast(reminder.dueDate))
-  );
-}
-
-function uniqueCourts(list) {
-  return [...new Set(list.map((matter) => matter.court))];
+function isOrderDelayed(matter) {
+  if (!matter.orderExpectedDate) return false;
+  if (matter.orderSignedDate) return false;
+  if (!["order pending", "open"].includes(matter.status)) return false;
+  return isPast(matter.orderExpectedDate);
 }
 
 function isPast(dateString) {
   if (!dateString) return false;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const target = new Date(`${dateString}T00:00:00Z`);
 
-  const date = new Date(dateString);
-  date.setHours(0, 0, 0, 0);
-  return date < today;
-}
-
-function formatDate(dateString) {
-  if (!dateString) return "N/A";
-
-  return new Date(`${dateString}T00:00:00`).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return Number.isFinite(target.getTime()) && target < today;
 }
 
 function detailRow(label, value) {
-  const wrapper = document.createElement("div");
-  const dt = document.createElement("dt");
-  dt.textContent = `${label}:`;
-  const dd = document.createElement("dd");
-  dd.textContent = value;
-  dd.style.margin = 0;
+  return `<div><dt>${label}</dt><dd>${escapeHtml(value || "—")}</dd></div>`;
+}
 
-  wrapper.append(dt, dd);
-  return wrapper;
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(`${value}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function dateValue(value) {
+  const date = new Date(value || "");
+  return Number.isFinite(date.getTime()) ? date.getTime() : 0;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
