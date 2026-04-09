@@ -13,13 +13,17 @@ body {
 }
 
 .app-shell {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 1.25rem;
 }
 
 .page-header {
-  padding: 0.5rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .page-header h1 {
@@ -32,65 +36,65 @@ body {
   color: #475467;
 }
 
-.layout {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+.top-nav {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .panel {
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #d0d5dd;
   border-radius: 12px;
   padding: 1rem;
   box-shadow: 0 2px 6px rgba(16, 24, 40, 0.06);
 }
 
-.panel h2 {
-  margin-top: 0;
-  font-size: 1.1rem;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.7rem;
-}
-
-label {
+.list-head,
+.detail-head {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #344054;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
 }
 
-input,
-select,
+h2,
+h3 {
+  margin: 0;
+}
+
+a {
+  color: #1d4ed8;
+}
+
+.button-link,
 button {
+  display: inline-block;
   border-radius: 8px;
-  border: 1px solid #c4c9d1;
-  padding: 0.55rem 0.6rem;
-  font-size: 0.92rem;
-}
-
-button {
+  border: 1px solid #344054;
   background: #344054;
   color: #fff;
-  border: 0;
+  padding: 0.5rem 0.75rem;
+  text-decoration: none;
+  font-size: 0.9rem;
   cursor: pointer;
-  font-weight: 600;
 }
 
+.button-link:hover,
 button:hover {
   background: #1d2939;
 }
 
+.button-muted {
+  background: #fff;
+  color: #344054;
+}
+
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.7rem;
+  margin-bottom: 1rem;
 }
 
 .kpi-card {
@@ -100,7 +104,6 @@ button:hover {
 }
 
 .kpi-card h3 {
-  margin: 0;
   font-size: 0.78rem;
   color: #475467;
 }
@@ -123,78 +126,85 @@ button:hover {
   background: #fcfcfd;
 }
 
-.matter-card h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
 .matter-meta {
   margin: 0.2rem 0 0.6rem;
   color: #475467;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
 }
 
 .matter-details {
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.2rem;
-  font-size: 0.82rem;
+  gap: 0.25rem;
+  font-size: 0.87rem;
 }
 
 .matter-details div {
   display: grid;
-  grid-template-columns: 120px 1fr;
-}
-
-.matter-stage-row {
-  margin: 0.7rem 0;
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
+  grid-template-columns: 130px 1fr;
   gap: 0.5rem;
 }
 
-.stage-badge {
-  align-self: center;
-  background: #eef4ff;
-  border: 1px solid #c7d7fe;
-  color: #1d4ed8;
+.matter-details dt {
+  color: #667085;
+}
+
+.matter-details dd {
+  margin: 0;
+}
+
+.flag-row {
+  margin: 0.6rem 0 0;
+}
+
+.flag {
+  display: inline-block;
+  background: #fff4ed;
+  border: 1px solid #ffdac2;
+  color: #9a3412;
   border-radius: 999px;
-  padding: 0.25rem 0.6rem;
   font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  margin-right: 0.4rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.8rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
   font-weight: 600;
-}
-
-.followup-section h4 {
-  margin: 0.35rem 0;
-  font-size: 0.84rem;
-}
-
-.reminder-list {
-  margin: 0 0 0.5rem;
-  padding-left: 1rem;
-  font-size: 0.8rem;
   color: #344054;
 }
 
-.reminder-form {
-  display: grid;
-  grid-template-columns: 2fr 1fr auto;
+input,
+select {
+  border-radius: 8px;
+  border: 1px solid #c4c9d1;
+  padding: 0.55rem 0.6rem;
+  font-size: 0.92rem;
+}
+
+.form-actions,
+.detail-actions {
+  display: flex;
   gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.logic-panel {
+  margin-top: 1rem;
+  border-top: 1px solid #eaecf0;
+  padding-top: 0.8rem;
 }
 
 .empty {
   margin: 0;
   color: #667085;
-  font-size: 0.85rem;
-}
-
-.court-summary ul {
-  margin: 0;
-  padding-left: 1rem;
-}
-
-.court-summary li {
-  margin-bottom: 0.3rem;
 }
