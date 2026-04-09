@@ -2,6 +2,14 @@
 
 Phase 1 implementation using plain HTML/CSS/JavaScript + LocalStorage.
 
+## GitHub Pages compatibility
+
+This app is intentionally build-free. GitHub Pages should serve it directly from the repository branch because:
+
+- `index.html` references `src/styles.css` and `src/app.js` using relative static paths
+- app code runs as a plain deferred script (no bundler, no transpile step)
+- routing is hash-based (`#/...`), so deep links do not require server-side rewrite rules
+
 ## Implemented in Phase 1
 
 - Matter list page (`#/matters`)

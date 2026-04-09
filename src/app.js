@@ -3,6 +3,7 @@ const STATUS_OPTIONS = ["open", "follow-up due", "order pending", "order signed"
 
 const appContainer = document.querySelector("#app");
 
+let storageAvailable = true;
 let matters = loadMatters();
 
 window.addEventListener("hashchange", renderRoute);
@@ -14,18 +15,27 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 function loadMatters() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-
   try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+
     return JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    storageAvailable = false;
+    console.warn("LocalStorage unavailable. Data will be kept only for this session.", error);
     return [];
   }
 }
 
 function saveMatters() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(matters));
+  if (!storageAvailable) return;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(matters));
+  } catch (error) {
+    storageAvailable = false;
+    console.warn("Could not write to LocalStorage. Further changes are session-only.", error);
+  }
 }
 
 function renderRoute() {
@@ -240,7 +250,7 @@ function renderMatterFormPage(existingMatter = null) {
     }
 
     const newMatter = {
-      id: crypto.randomUUID(),
+      id: generateMatterId(),
       ...payload,
       createdAt: new Date().toISOString(),
     };
@@ -327,4 +337,13 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+
+function generateMatterId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return `matter-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
